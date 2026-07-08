@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>One-Line Draw</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cream: #fff6ea;
+            --peach: #ffd8b8;
+            --pink: #ffb4c6;
+            --lavender: #c9b6f7;
+            --purple: #7c5cbf;
+            --purple-dark: #5a3f96;
+            --ink: #4a3b63;
+            --good: #7fd88f;
+            --bad: #ff6b6b;
+            --line-idle: #d8cdee;
+            --line-done: #7c5cbf;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Quicksand', sans-serif;
+            background: radial-gradient(circle at 20% 10%, #fff0dd 0%, #ffe3ea 40%, #eadcff 100%);
+            color: var(--ink);
+            overflow: hidden;
+        }
+        #app {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        h1,
+        h2,
+        h3 {
+            font-family: 'Baloo 2', cursive;
+            margin: 0;
+        }
+        .screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            padding: 20px;
+            text-align: center;
+        }
+        .screen.active {
+            display: flex;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.75);
+            border-radius: 28px;
+            padding: 30px 34px;
+            box-shadow: 0 12px 30px rgba(124, 92, 191, 0.18);
+            max-width: 480px;
+            width: 100%;
+            backdrop-filter: blur(6px);
+        }
+        .title-emoji {
+            font-size: 48px;
+        }
+        .subtitle {
+            color: #8a7aab;
+            font-size: 15px;
+            margin-top: 4px;
+        }
+        .btn {
+            font-family: 'Baloo 2', cursive;
+            font-size: 18px;
+            border: none;
+            border-radius: 18px;
+            padding: 14px 28px;
+            cursor: pointer;
+            background: var(--purple);
+            color: white;
+            box-shadow: 0 6px 0 var(--purple-dark);
+            transition: transform .08s ease, box-shadow .08s ease;
+            margin: 6px;
+        }
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 var(--purple-dark);
+        }
+        .btn.secondary {
+            background: white;
+            color: var(--purple);
+            box-shadow: 0 6px 0 #d9cff2;
+        }
+        .btn.small {
+            font-size: 14px;
+            padding: 9px 16px;
+            box-shadow: 0 4px 0 var(--purple-dark);
+        }
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px;
+        }
+        .icon-btn {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            border: none;
+            background: white;
+            color: var(--purple);
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #d9cff2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .icon-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #d9cff2;
+        }
+        .top-right {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            gap: 8px;
+            z-index: 5;
+        }
+        #gameScreen {
+            padding: 10px;
+        }
+        .hud {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 10px 10px 10px;
+        }
+        .hud-left {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+        }
+        .level-badge {
+            font-family: 'Baloo 2', cursive;
+            font-size: 20px;
+            color: var(--purple-dark);
+        }
+        .tier-stars {
+            font-size: 13px;
+            color: #c9a25b;
+            letter-spacing: 1px;
+        }
+        .hearts {
+            font-size: 22px;
+            letter-spacing: 3px;
+        }
+        .heart-lost {
+            opacity: .25;
+            filter: grayscale(1);
+        }
+        .board-wrap {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            background: rgba(255, 255, 255, 0.65);
+            border-radius: 24px;
+            box-shadow: 0 10px 26px rgba(124, 92, 191, 0.15);
+            padding: 8px;
+        }
+        svg {
+            width: 100%;
+            height: auto;
+            display: block;
+            touch-action: none;
+        }
+        .toast {
+            position: absolute;
+            left: 50%;
+            top: 14px;
+            transform: translateX(-50%);
+            background: var(--purple-dark);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 16px;
+            font-family: 'Baloo 2', cursive;
+            font-size: 16px;
+            opacity: 0;
+            transition: opacity .25s ease, top .25s ease;
+            pointer-events: none;
+            white-space: nowrap;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
+            z-index: 4;
+        }
+        .toast.show {
+            opacity: 1;
+            top: 26px;
+        }
+        .toast.good {
+            background: #5cb583;
+        }
+        .toast.bad {
+            background: #e0665f;
+        }
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(74, 59, 99, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        .overlay.active {
+            display: flex;
+        }
+        .overlay .card {
+            max-width: 340px;
+        }
+        .instructions {
+            text-align: left;
+            font-size: 15px;
+            line-height: 1.55;
+            color: #5c4c7a;
+        }
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        footer.tiny {
+            font-size: 12px;
+            color: #9d8cbf;
+            margin-top: 6px;
+        }
+        .tut-instruction {
+            font-family: 'Baloo 2', cursive;
+            font-size: 17px;
+            color: var(--purple-dark);
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 16px;
+            padding: 10px 18px;
+            max-width: 520px;
+            box-shadow: 0 6px 14px rgba(124, 92, 191, 0.12);
+            transition: transform .18s ease, background .2s ease;
+        }
+        .tut-instruction.bump {
+            transform: scale(1.05);
+            background: #fff0f3;
+        }
+        .tut-instruction.celebrate {
+            background: #e8ffe8;
+            color: #3a7d44;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+
+        <!-- START SCREEN -->
+        <div id="startScreen" class="screen active">
+            <div class="top-right">
+                <button class="icon-btn" id="soundToggleStart" title="Toggle sound">🔊</button>
+            </div>
+            <div class="card">
+                <div class="title-emoji">✏️〰️</div>
+                <h1>One-Line Draw</h1>
+                <div class="subtitle">Trace every path in a single stroke — without retracing any line!</div>
+                <div class="btn-row" style="margin-top:18px;">
+                    <button class="btn" id="playBtn">▶ Play</button>
+                    <button class="btn secondary" id="howToBtn">❓ How to Play</button>
+                </div>
+                <footer class="tiny">10 progressively harder shapes • 3 lives</footer>
+            </div>
+        </div>
+
+        <!-- HOW TO PLAY SCREEN -->
+        <div id="howToScreen" class="screen">
+            <div class="card">
+                <h2>How to Play</h2>
+                <ul class="instructions">
+                    <li>🖊️ <b>Drag</b> from dot to dot to draw every line.</li>
+                    <li>➡️ You must finish in <b>one continuous stroke</b> — start and don't lift.</li>
+                    <li>🚫 You <b>cannot retrace</b> a line (overlap costs a life).</li>
+                    <li>🔄 Reset button restarts the shape with no penalty.</li>
+                    <li>🎁 Clear 3 levels in a row without losing a life to earn a life back (max 3).</li>
+                </ul>
+                <div class="btn-row" style="margin-top:16px;">
+                    <button class="btn" id="startTutorialBtn">🎓 Practice Round</button>
+                    <button class="btn secondary" id="backFromHowTo">← Back</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TUTORIAL SCREEN (triangle practice) -->
+        <div id="tutorialScreen" class="screen">
+            <div class="hud" style="max-width:600px;">
+                <div class="hud-left">
+                    <div class="level-badge">Practice Triangle</div>
+                    <div class="tier-stars">Learn the basics 💛</div>
+                </div>
+                <div class="hearts" id="tutHearts">❤️❤️❤️</div>
+                <button class="icon-btn" id="tutResetBtn" title="Reset shape">🔄</button>
+                <button class="icon-btn" id="skipTutorialBtn" title="Skip">✕</button>
+            </div>
+            <div class="tut-instruction" id="tutInstruction">👆 Tap any dot to begin your drawing.</div>
+            <div class="board-wrap">
+                <div class="toast" id="tutToast"></div>
+                <svg id="tutBoard" viewBox="0 0 600 500" xmlns="http://www.w3.org/2000/svg"></svg>
+            </div>
+            <div class="btn-row" style="margin-top:12px;">
+                <button class="btn" id="tutStartGameBtn">✅ Start Game</button>
+            </div>
+        </div>
+
+        <!-- GAME SCREEN -->
+        <div id="gameScreen" class="screen">
+            <div class="hud">
+                <div class="hud-left">
+                    <div class="level-badge" id="levelBadge">Level 1</div>
+                    <div class="tier-stars" id="tierStars">★☆☆☆☆</div>
+                </div>
+                <div class="hearts" id="hearts">❤️❤️❤️</div>
+                <button class="icon-btn" id="resetBtn" title="Reset shape">🔄</button>
+                <button class="icon-btn" id="pauseBtn" title="Pause">⏸</button>
+            </div>
+            <div class="board-wrap">
+                <div class="toast" id="gameToast"></div>
+                <svg id="board" viewBox="0 0 600 500" xmlns="http://www.w3.org/2000/svg"></svg>
+            </div>
+        </div>
+
+        <!-- GAME OVER SCREEN -->
+        <div id="gameOverScreen" class="screen">
+            <div class="card">
+                <div class="title-emoji">💔</div>
+                <h2>Out of Lives!</h2>
+                <p class="subtitle" id="gameOverStats">You reached Level 1</p>
+                <div class="btn-row" style="margin-top:14px;">
+                    <button class="btn" id="retryBtn">🔁 Try Again</button>
+                    <button class="btn secondary" id="gameOverMenuBtn">🏠 Main Menu</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VICTORY SCREEN -->
+        <div id="victoryScreen" class="screen">
+            <div class="card">
+                <div class="title-emoji">🏆</div>
+                <h2>All Shapes Complete!</h2>
+                <p class="subtitle" id="victoryStats">You drew every object without lifting your pen!</p>
+                <div class="btn-row" style="margin-top:14px;">
+                    <button class="btn" id="playAgainBtn">🔁 Play Again</button>
+                    <button class="btn secondary" id="victoryMenuBtn">🏠 Main Menu</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAUSE OVERLAY -->
+        <div class="overlay" id="pauseOverlay">
+            <div class="card">
+                <h2>⏸ Paused</h2>
+                <div class="btn-row" style="margin-top:14px; flex-direction:column;">
+                    <button class="btn" id="resumeBtn">▶ Resume</button>
+                    <button class="btn secondary" id="soundToggleGame">🔊 Sound: On</button>
+                    <button class="btn secondary" id="menuFromPauseBtn">🏠 Return to Main Menu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            "use strict";
+
+            // ---------- SOUND ----------
+            let audioCtx = null,
+                masterGain = null,
+                soundOn = true,
+                bgmTimer = null,
+                bgmStep = 0;
+            const bgmScale = [261.63, 293.66, 329.63, 392.00, 440.00, 392.00, 329.63, 293.66];
+
+            function ensureAudio() {
+                if (!audioCtx) { audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                    masterGain = audioCtx.createGain();
+                    masterGain.gain.value = soundOn ? 1 : 0;
+                    masterGain.connect(audioCtx.destination); }
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+            }
+
+            function tone(f, d, t, v, del) {
+                if (!audioCtx) return;
+                del = del || 0;
+                const t0 = audioCtx.currentTime + del,
+                    osc = audioCtx.createOscillator(),
+                    g = audioCtx.createGain();
+                osc.type = t || 'sine';
+                osc.frequency.setValueAtTime(f, t0);
+                g.gain.setValueAtTime(0, t0);
+                g.gain.linearRampToValueAtTime(v, t0 + 0.02);
+                g.gain.exponentialRampToValueAtTime(0.001, t0 + d);
+                osc.connect(g);
+                g.connect(masterGain);
+                osc.start(t0);
+                osc.stop(t0 + d + 0.02);
+            }
+
+            function playConnect() { ensureAudio();
+                tone(660, 0.09, 'triangle', 0.22); }
+
+            function playOverlap() { ensureAudio();
+                tone(260, 0.16, 'sawtooth', 0.28);
+                tone(160, 0.22, 'sawtooth', 0.22, 0.09); }
+
+            function playStuck() { ensureAudio();
+                tone(180, 0.18, 'sine', 0.16); }
+
+            function playLevelComplete() { ensureAudio();
+                [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, 0.16, 'triangle', 0.22, i * 0.08)); }
+
+            function playLifeGained() { ensureAudio();
+                [784, 988, 1175].forEach((f, i) => tone(f, 0.14, 'sine', 0.2, i * 0.07)); }
+
+            function playGameOver() { ensureAudio();
+                [392, 329.6, 261.6, 196].forEach((f, i) => tone(f, 0.28, 'sawtooth', 0.2, i * 0.14)); }
+
+            function playVictory() { ensureAudio();
+                [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => tone(f, 0.22, 'triangle', 0.22, i * 0.11)); }
+
+            function playSoftHint() { ensureAudio();
+                tone(440, 0.08, 'sine', 0.08); }
+
+            function startBGM() { if (bgmTimer) return;
+                ensureAudio();
+                bgmTimer = setInterval(() => { tone(bgmScale[bgmStep % bgmScale.length], 0.35, 'sine', 0.06);
+                    bgmStep++; }, 480); }
+
+            function stopBGM() { if (bgmTimer) { clearInterval(bgmTimer);
+                    bgmTimer = null; } }
+
+            function setSound(on) {
+                soundOn = on;
+                if (masterGain) masterGain.gain.value = on ? 1 : 0;
+                document.getElementById('soundToggleGame').textContent = on ? '🔊 Sound: On' : '🔇 Sound: Off';
+                document.getElementById('soundToggleStart').textContent = on ? '🔊' : '🔇';
+            }
+
+            // ---------- LEVEL DATA ----------
+            const LEVELS = [
+                { edges: [
+                        [0, 1],
+                        [1, 2],
+                        [2, 0]
+                    ],
+                    nodes: [{ x: 300, y: 90 }, { x: 140, y: 380 }, { x: 460, y: 380 }] },
+                { edges: [
+                        [0, 1],
+                        [1, 2],
+                        [2, 3],
+                        [3, 0],
+                        [3, 4],
+                        [4, 2],
+                        [1, 3]
+                    ],
+                    nodes: [{ x: 150, y: 380 }, { x: 450, y: 380 }, { x: 450, y: 220 }, { x: 150, y: 220 }, { x: 300,
+                        y: 90 }] },
+                { edges: [
+                        [0, 1],
+                        [1, 2],
+                        [2, 3],
+                        [3, 4],
+                        [4, 0],
+                        [0, 3],
+                        [1, 4],
+                        [2, 4],
+                        [1, 3]
+                    ],
+                    nodes: [{ x: 120, y: 280 }, { x: 300, y: 130 }, { x: 480, y: 280 }, { x: 380, y: 380 }, { x: 220,
+                        y: 380 }] },
+                { edges: [
+                        [0, 1],
+                        [1, 2],
+                        [2, 0],
+                        [0, 3],
+                        [3, 4]
+                    ],
+                    nodes: [{ x: 300, y: 80 }, { x: 140, y: 200 }, { x: 460, y: 200 }, { x: 300, y: 280 }, { x: 300,
+                        y: 380 }] },
+                { edges: [
+                        [0, 1],
+                        [1, 2],
+                        [2, 3],
+                        [3, 4],
+                        [4, 5],
+                        [5, 6],
+                        [6, 7],
+                        [7, 0],
+                        [1, 6],
+                        [2, 5],
+                        [1, 5]
+                    ],
+                    nodes: [{ x: 100, y: 360 }, { x: 200, y: 360 }, { x: 400, y: 360 }, { x: 500, y: 360 }, { x: 500,
+                        y: 260 }, { x: 400, y: 260 }, { x: 200, y: 260 }, { x: 100, y: 260 }] },
+                { edges: [
+                        [0, 1],
+                        [0, 2],
+                        [0, 3],
+                        [0, 4],
+                        [1, 2],
+                        [1, 3],
+                        [1, 4],
+                        [2, 3],
+                        [2, 4],
+                        [3, 4]
+                    ],
+                    nodes: [{ x: 300, y: 70 }, { x: 200, y: 200 }, { x: 300, y: 300 }, { x: 400, y: 200 }, { x: 300,
+                        y: 200 }] },
+                { edges: [
+                        [0, 1],
+                        [0, 2],
+                        [0, 3],
+                        [0, 4],
+                        [1, 3],
+                        [2, 4],
+                        [1, 2]
+                    ],
+                    nodes: [{ x: 300, y: 250 }, { x: 150, y: 150 }, { x: 450, y: 150 }, { x: 150, y: 350 }, { x: 450,
+                        y: 350 }] },
+                { edges: [
+                        [0, 1],
+                        [1, 2],
+                        [2, 3],
+                        [3, 4],
+                        [4, 5],
+                        [5, 6],
+                        [6, 0],
+                        [4, 7],
+                        [7, 2],
+                        [7, 6],
+                        [2, 5],
+                        [6, 3],
+                        [3, 5]
+                    ],
+                    nodes: [{ x: 150, y: 360 }, { x: 450, y: 360 }, { x: 480, y: 300 }, { x: 400, y: 280 }, { x: 300,
+                        y: 280 }, { x: 200, y: 280 }, { x: 120, y: 300 }, { x: 300, y: 140 }] },
+                { edges: [
+                        [0, 1],
+                        [0, 2],
+                        [1, 4],
+                        [2, 3],
+                        [3, 4],
+                        [2, 5],
+                        [4, 6],
+                        [5, 3],
+                        [6, 3],
+                        [0, 5],
+                        [1, 6],
+                        [5, 6],
+                        [0, 3],
+                        [4, 3],
+                        [2, 4]
+                    ],
+                    nodes: [{ x: 200, y: 140 }, { x: 400, y: 140 }, { x: 200, y: 280 }, { x: 300, y: 380 }, { x: 400,
+                        y: 280 }, { x: 150, y: 360 }, { x: 450, y: 360 }] },
+                { edges: [
+                        [0, 1],
+                        [0, 2],
+                        [1, 3],
+                        [2, 3],
+                        [2, 4],
+                        [4, 3],
+                        [4, 5],
+                        [5, 0],
+                        [6, 1],
+                        [6, 4],
+                        [7, 0],
+                        [7, 1],
+                        [7, 2],
+                        [7, 3],
+                        [7, 4]
+                    ],
+                    nodes: [{ x: 200, y: 100 }, { x: 400, y: 100 }, { x: 200, y: 200 }, { x: 400, y: 200 }, { x: 300,
+                        y: 280 }, { x: 150, y: 380 }, { x: 450, y: 380 }, { x: 300, y: 180 }] }
+            ];
+
+            const MAX_EDGES = Math.max(...LEVELS.map(l => l.edges.length));
+
+            function starsFor(idx) {
+                const e = LEVELS[idx].edges.length,
+                    t = Math.max(1, Math.min(5, Math.round((e / MAX_EDGES) * 5)));
+                return '★'.repeat(t) + '☆'.repeat(5 - t);
+            }
+
+            // ---------- GAME STATE ----------
+            const state = { levelIndex: 0, lives: 3, roundsSinceLoss: 0, paused: false, levelComplete: false };
+            const tutState = { lives: 3, levelComplete: false };
+            const NODE_R = 13,
+                SNAP_R = 34;
+
+            function edgeKey(a, b) { return Math.min(a, b) + '-' + Math.max(a, b); }
+
+            // ---------- BOARD CONTROLLER ----------
+            const svgNS = "http://www.w3.org/2000/svg";
+
+            function makeBoardController(svgEl, toastEl, opts) {
+                let nodes = [],
+                    edges = [],
+                    adjacency = [],
+                    usedEdges = new Set(),
+                    path = [],
+                    currentNode = null;
+                let dragging = false,
+                    tempLine = null,
+                    edgeEls = {},
+                    nodeEls = [];
+                let deadEndTimeout = null,
+                    completeFired = false;
+
+                function clearBoard() {
+                    while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
+                    edgeEls = {};
+                    nodeEls = [];
+                }
+
+                function svgPoint(cx, cy) {
+                    const pt = svgEl.createSVGPoint();
+                    pt.x = cx;
+                    pt.y = cy;
+                    const ctm = svgEl.getScreenCTM();
+                    if (!ctm) return { x: 0, y: 0 };
+                    const loc = pt.matrixTransform(ctm.inverse());
+                    return { x: loc.x, y: loc.y };
+                }
+
+                function buildAdjacency() {
+                    adjacency = nodes.map(() => []);
+                    edges.forEach(([a, b]) => {
+                        const k = edgeKey(a, b);
+                        adjacency[a].push({ to: b, key: k });
+                        adjacency[b].push({ to: a, key: k });
+                    });
+                }
+
+                function load(levelData) {
+                    nodes = levelData.nodes;
+                    edges = levelData.edges;
+                    buildAdjacency();
+                    resetProgress();
+                    draw();
+                }
+
+                function resetProgress() {
+                    usedEdges = new Set();
+                    path = [];
+                    currentNode = null;
+                    if (deadEndTimeout) { clearTimeout(deadEndTimeout);
+                        deadEndTimeout = null; }
+                    completeFired = false;
+                    draw();
+                }
+
+                function draw() {
+                    clearBoard();
+                    edges.forEach(([a, b]) => {
+                        const line = document.createElementNS(svgNS, 'line');
+                        const k = edgeKey(a, b);
+                        line.setAttribute('x1', nodes[a].x);
+                        line.setAttribute('y1', nodes[a].y);
+                        line.setAttribute('x2', nodes[b].x);
+                        line.setAttribute('y2', nodes[b].y);
+                        line.setAttribute('stroke', usedEdges.has(k) ? 'var(--line-done)' : 'var(--line-idle)');
+                        line.setAttribute('stroke-width', usedEdges.has(k) ? '8' : '6');
+                        line.setAttribute('stroke-linecap', 'round');
+                        line.setAttribute('stroke-dasharray', usedEdges.has(k) ? '0' : '2 10');
+                        svgEl.appendChild(line);
+                        edgeEls[k] = line;
+                    });
+                    tempLine = document.createElementNS(svgNS, 'line');
+                    tempLine.setAttribute('stroke', '#b8a4e8');
+                    tempLine.setAttribute('stroke-width', '7');
+                    tempLine.setAttribute('stroke-linecap', 'round');
+                    tempLine.setAttribute('opacity', '0');
+                    svgEl.appendChild(tempLine);
+                    nodes.forEach((n, i) => {
+                        const isCur = (i === currentNode),
+                            visited = path.includes(i);
+                        const circle = document.createElementNS(svgNS, 'circle');
+                        circle.setAttribute('cx', n.x);
+                        circle.setAttribute('cy', n.y);
+                        circle.setAttribute('r', isCur ? NODE_R + 4 : NODE_R);
+                        circle.setAttribute('fill', isCur ? '#ffb4c6' : (visited ? '#c9b6f7' : '#ffffff'));
+                        circle.setAttribute('stroke', 'var(--purple)');
+                        circle.setAttribute('stroke-width', isCur ? '4' : '3');
+                        circle.style.cursor = 'pointer';
+                        if (isCur) {
+                            circle.setAttribute('stroke-dasharray', '4 2');
+                            const pulse = document.createElementNS(svgNS, 'animate');
+                            pulse.setAttribute('attributeName', 'r');
+                            pulse.setAttribute('values', (NODE_R + 4) + ';' + (NODE_R + 7) + ';' + (NODE_R + 4));
+                            pulse.setAttribute('dur', '1.2s');
+                            pulse.setAttribute('repeatCount', 'indefinite');
+                            circle.appendChild(pulse);
+                        }
+                        svgEl.appendChild(circle);
+                        nodeEls.push(circle);
+                    });
+                    if (opts.onProgress) opts.onProgress(path);
+                }
+
+                function nearestNode(pt) {
+                    let best = -1,
+                        bestD = Infinity;
+                    nodes.forEach((n, i) => {
+                        const d = Math.hypot(n.x - pt.x, n.y - pt.y);
+                        if (d < bestD) { bestD = d;
+                            best = i; }
+                    });
+                    return bestD <= SNAP_R ? best : -1;
+                }
+
+                function onDown(e) {
+                    if (opts.isBlocked && opts.isBlocked()) return;
+                    if (opts.getLevelComplete && opts.getLevelComplete()) return;
+                    const pt = svgPoint(e.clientX, e.clientY);
+                    const idx = nearestNode(pt);
+                    if (idx === -1) return;
+                    if (path.length === 0) {
+                        currentNode = idx;
+                        path = [idx];
+                        if (deadEndTimeout) { clearTimeout(deadEndTimeout);
+                            deadEndTimeout = null; }
+                        draw();
+                    } else if (idx !== currentNode) {
+                        if (opts.onWrongStart) opts.onWrongStart(currentNode);
+                        return;
+                    }
+                    dragging = true;
+                    try { if (typeof e.pointerId !== 'undefined' && svgEl.setPointerCapture) svgEl.setPointerCapture(e
+                            .pointerId); } catch (_) {}
+                    tempLine.setAttribute('opacity', '1');
+                    updateTemp(pt);
+                }
+
+                function updateTemp(pt) {
+                    const n = nodes[currentNode];
+                    tempLine.setAttribute('x1', n.x);
+                    tempLine.setAttribute('y1', n.y);
+                    tempLine.setAttribute('x2', pt.x);
+                    tempLine.setAttribute('y2', pt.y);
+                }
+
+                function onMove(e) { if (!dragging) return;
+                    const pt = svgPoint(e.clientX, e.clientY);
+                    updateTemp(pt); }
+
+                function onUp(e) {
+                    if (!dragging) return;
+                    dragging = false;
+                    tempLine.setAttribute('opacity', '0');
+                    const pt = svgPoint(e.clientX, e.clientY);
+                    const idx = nearestNode(pt);
+                    if (idx === -1 || idx === currentNode) return;
+                    const link = adjacency[currentNode].find(a => a.to === idx);
+                    if (!link) return;
+                    if (usedEdges.has(link.key)) {
+                        if (opts.onOverlap) opts.onOverlap();
+                        return;
+                    }
+                    usedEdges.add(link.key);
+                    path.push(idx);
+                    currentNode = idx;
+                    if (deadEndTimeout) { clearTimeout(deadEndTimeout);
+                        deadEndTimeout = null; }
+                    draw();
+                    if (opts.onConnect) opts.onConnect();
+                    if (usedEdges.size === edges.length && !completeFired) {
+                        completeFired = true;
+                        if (opts.onComplete) opts.onComplete();
+                        return;
+                    }
+                    const hasMove = adjacency[currentNode].some(a => !usedEdges.has(a.key));
+                    if (!hasMove && !completeFired) {
+                        deadEndTimeout = setTimeout(() => {
+                            if (!completeFired) {
+                                if (opts.onStuck) opts.onStuck();
+                            }
+                        }, 350);
+                    }
+                }
+
+                svgEl.addEventListener('pointerdown', onDown);
+                svgEl.addEventListener('pointermove', onMove);
+                window.addEventListener('pointerup', onUp);
+                window.addEventListener('pointercancel', onUp);
+                svgEl.addEventListener('touchstart', function(te) {
+                    if (!te.changedTouches || te.changedTouches.length === 0) return;
+                    te.preventDefault();
+                    const t = te.changedTouches[0];
+                    onDown({ clientX: t.clientX, clientY: t.clientY, pointerId: t.identifier });
+                }, { passive: false });
+                svgEl.addEventListener('touchmove', function(te) {
+                    if (!te.changedTouches || te.changedTouches.length === 0) return;
+                    te.preventDefault();
+                    const t = te.changedTouches[0];
+                    onMove({ clientX: t.clientX, clientY: t.clientY });
+                }, { passive: false });
+                window.addEventListener('touchend', function(te) {
+                    if (!te.changedTouches || te.changedTouches.length === 0) return;
+                    const t = te.changedTouches[0];
+                    onUp({ clientX: t.clientX, clientY: t.clientY });
+                });
+                window.addEventListener('touchcancel', function(te) {
+                    if (!te.changedTouches || te.changedTouches.length === 0) return;
+                    const t = te.changedTouches[0];
+                    onUp({ clientX: t.clientX, clientY: t.clientY });
+                });
+
+                return { load, resetProgress, get totalEdges() { return edges.length; } };
+            }
+
+            function makeToast(el) {
+                let timer = null;
+                return function(msg, type) {
+                    el.textContent = msg;
+                    el.className = 'toast show ' + (type || '');
+                    if (timer) clearTimeout(timer);
+                    timer = setTimeout(() => { el.className = 'toast ' + (type || ''); }, 1400);
+                };
+            }
+
+            const screens = ['startScreen', 'howToScreen', 'tutorialScreen', 'gameScreen', 'gameOverScreen',
+            'victoryScreen'];
+
+            function showScreen(id) { screens.forEach(s => document.getElementById(s).classList.toggle('active', s ===
+                    id)); }
+
+            const gameToastEl = document.getElementById('gameToast'),
+                showGameToast = makeToast(gameToastEl);
+            const tutToastEl = document.getElementById('tutToast'),
+                showTutToast = makeToast(tutToastEl);
+
+            function refreshHUD() {
+                document.getElementById('levelBadge').textContent = 'Level ' + (state.levelIndex + 1);
+                document.getElementById('tierStars').textContent = starsFor(state.levelIndex);
+                let hearts = '';
+                for (let i = 0; i < 3; i++) hearts += (i < state.lives) ? '❤️' :
+                    '<span class="heart-lost">🤍</span>';
+                document.getElementById('hearts').innerHTML = hearts;
+            }
+
+            function refreshTutHUD() {
+                let hearts = '';
+                for (let i = 0; i < 3; i++) hearts += (i < tutState.lives) ? '❤️' :
+                    '<span class="heart-lost">🤍</span>';
+                document.getElementById('tutHearts').innerHTML = hearts;
+            }
+
+            // ---------- GAME BOARD ----------
+            const gameBoard = makeBoardController(document.getElementById('board'), gameToastEl, {
+                isBlocked: () => state.paused,
+                getLevelComplete: () => state.levelComplete,
+                onProgress: null,
+                onConnect: () => playConnect(),
+                onOverlap: () => {
+                    if (state.levelComplete) return;
+                    playOverlap();
+                    showGameToast("Overlap! Lost a life 💔", 'bad');
+                    state.lives--;
+                    state.roundsSinceLoss = 0;
+                    refreshHUD();
+                    if (state.lives <= 0) setTimeout(endGame, 500);
+                    else setTimeout(() => gameBoard.resetProgress(), 500);
+                },
+                onStuck: () => {
+                    if (state.levelComplete) return;
+                    playStuck();
+                    showGameToast("Dead end! Lost a life 💔", 'bad');
+                    state.lives--;
+                    state.roundsSinceLoss = 0;
+                    refreshHUD();
+                    if (state.lives <= 0) setTimeout(endGame, 500);
+                    else setTimeout(() => gameBoard.resetProgress(), 500);
+                },
+                onComplete: () => {
+                    state.levelComplete = true;
+                    playLevelComplete();
+                    state.roundsSinceLoss++;
+                    let gained = false;
+                    if (state.roundsSinceLoss >= 3 && state.lives < 3) { state.lives++;
+                        state.roundsSinceLoss = 0;
+                        gained = true; }
+                    showGameToast(gained ? "Level Complete! +1 Life 🎁" : "Level Complete! ✨", 'good');
+                    if (gained) setTimeout(playLifeGained, 300);
+                    refreshHUD();
+                    setTimeout(() => {
+                        state.levelComplete = false;
+                        state.levelIndex++;
+                        if (state.levelIndex >= LEVELS.length) winGame();
+                        else loadCurrentLevel();
+                    }, 1300);
+                }
+            });
+
+            function loadCurrentLevel() {
+                state.levelComplete = false;
+                gameBoard.load(LEVELS[state.levelIndex]);
+                refreshHUD();
+            }
+
+            function startGame() {
+                state.levelIndex = 0;
+                state.lives = 3;
+                state.roundsSinceLoss = 0;
+                state.paused = false;
+                state.levelComplete = false;
+                showScreen('gameScreen');
+                ensureAudio();
+                startBGM();
+                loadCurrentLevel();
+            }
+
+            function endGame() {
+                playGameOver();
+                stopBGM();
+                document.getElementById('gameOverStats').textContent = 'You reached Level ' + (state.levelIndex + 1) + '.';
+                showScreen('gameOverScreen');
+            }
+
+            function winGame() {
+                playVictory();
+                stopBGM();
+                document.getElementById('victoryStats').textContent = 'You drew all ' + LEVELS.length +
+                    ' shapes without giving up!';
+                showScreen('victoryScreen');
+            }
+
+            function returnToMenu() {
+                state.paused = false;
+                document.getElementById('pauseOverlay').classList.remove('active');
+                stopBGM();
+                gameBoard.resetProgress();
+                showScreen('startScreen');
+            }
+
+            // ---------- TUTORIAL BOARD ----------
+            const tutMessages = [
+                "👆 Tap any dot to begin your drawing.",
+                "☝️ Good! Now tap the pink dot and drag to an adjacent white dot.",
+                "👏 Almost! Tap the pink dot and drag to the last white dot.",
+                "🎉 Perfect! You drew the triangle in one stroke!"
+            ];
+
+            function updateTutInstruction(pathLength, complete) {
+                const el = document.getElementById('tutInstruction');
+                if (complete) {
+                    el.textContent = tutMessages[3];
+                    el.classList.add('celebrate');
+                    el.classList.remove('bump');
+                } else {
+                    el.classList.remove('celebrate');
+                    const idx = Math.min(pathLength, tutMessages.length - 2);
+                    el.textContent = tutMessages[idx];
+                }
+            }
+
+            function bumpTutInstruction() {
+                const el = document.getElementById('tutInstruction');
+                el.classList.add('bump');
+                setTimeout(() => el.classList.remove('bump'), 250);
+            }
+
+            function initTutorialState() {
+                tutState.lives = 3;
+                tutState.levelComplete = false;
+                refreshTutHUD();
+                updateTutInstruction(0, false);
+                const el = document.getElementById('tutInstruction');
+                el.classList.remove('celebrate', 'bump');
+            }
+
+            const tutBoard = makeBoardController(document.getElementById('tutBoard'), tutToastEl, {
+                isBlocked: () => false,
+                getLevelComplete: () => tutState.levelComplete,
+                onProgress: (path) => updateTutInstruction(path.length, false),
+                onConnect: () => playConnect(),
+                onWrongStart: (currentNodeIdx) => {
+                    playSoftHint();
+                    showTutToast("👈 Tap the pink dot to continue!", '');
+                    bumpTutInstruction();
+                },
+                onOverlap: () => {
+                    if (tutState.levelComplete) return;
+                    playOverlap();
+                    showTutToast("Overlap! Lost a life – shape restarts.", 'bad');
+                    tutState.lives--;
+                    refreshTutHUD();
+                    if (tutState.lives <= 0) {
+                        showTutToast("Out of lives – practice restarts.", 'bad');
+                        setTimeout(() => {
+                            initTutorialState();
+                            tutBoard.resetProgress();
+                        }, 800);
+                    } else {
+                        setTimeout(() => tutBoard.resetProgress(), 500);
+                    }
+                },
+                onStuck: () => {
+                    if (tutState.levelComplete) return;
+                    playStuck();
+                    showTutToast("Dead end! Lost a life – shape restarts.", 'bad');
+                    tutState.lives--;
+                    refreshTutHUD();
+                    if (tutState.lives <= 0) {
+                        showTutToast("Out of lives – practice restarts.", 'bad');
+                        setTimeout(() => {
+                            initTutorialState();
+                            tutBoard.resetProgress();
+                        }, 800);
+                    } else {
+                        setTimeout(() => tutBoard.resetProgress(), 500);
+                    }
+                },
+                onComplete: () => {
+                    tutState.levelComplete = true;
+                    playLevelComplete();
+                    showTutToast("Perfect! You're ready.", 'good');
+                    updateTutInstruction(0, true);
+                }
+            });
+
+            function loadTutorialBoard() {
+                initTutorialState();
+                tutBoard.load({
+                    nodes: [{ x: 300, y: 90 }, { x: 140, y: 380 }, { x: 460, y: 380 }],
+                    edges: [
+                        [0, 1],
+                        [1, 2],
+                        [2, 0]
+                    ]
+                });
+            }
+
+            // ---------- BUTTONS ----------
+            document.getElementById('playBtn').addEventListener('click', () => { ensureAudio();
+                startGame(); });
+            document.getElementById('howToBtn').addEventListener('click', () => showScreen('howToScreen'));
+            document.getElementById('backFromHowTo').addEventListener('click', () => showScreen('startScreen'));
+            document.getElementById('startTutorialBtn').addEventListener('click', () => {
+                ensureAudio();
+                showScreen('tutorialScreen');
+                loadTutorialBoard();
+            });
+            document.getElementById('skipTutorialBtn').addEventListener('click', () => showScreen('startScreen'));
+            document.getElementById('tutStartGameBtn').addEventListener('click', () => startGame());
+
+            document.getElementById('tutResetBtn').addEventListener('click', () => {
+                ensureAudio();
+                tone(440, 0.1, 'sine', 0.15);
+                if (tutState.levelComplete) {
+                    initTutorialState();
+                }
+                tutBoard.resetProgress();
+                updateTutInstruction(0, false);
+                showTutToast("Shape reset!", '');
+            });
+
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                if (state.paused || state.levelComplete) return;
+                ensureAudio();
+                tone(440, 0.1, 'sine', 0.15);
+                gameBoard.resetProgress();
+                showGameToast("Shape reset!", '');
+            });
+
+            document.getElementById('pauseBtn').addEventListener('click', () => { state.paused = true;
+                document.getElementById('pauseOverlay').classList.add('active'); });
+            document.getElementById('resumeBtn').addEventListener('click', () => { state.paused = false;
+                document.getElementById('pauseOverlay').classList.remove('active'); });
+            document.getElementById('soundToggleGame').addEventListener('click', () => setSound(!soundOn));
+            document.getElementById('soundToggleStart').addEventListener('click', () => { ensureAudio();
+                setSound(!soundOn); });
+            document.getElementById('menuFromPauseBtn').addEventListener('click', returnToMenu);
+            document.getElementById('gameOverMenuBtn').addEventListener('click', returnToMenu);
+            document.getElementById('victoryMenuBtn').addEventListener('click', returnToMenu);
+            document.getElementById('retryBtn').addEventListener('click', () => startGame());
+            document.getElementById('playAgainBtn').addEventListener('click', () => startGame());
+
+            setSound(true);
+            showScreen('startScreen');
+        })();
+    </script>
+</body>
+</html>
