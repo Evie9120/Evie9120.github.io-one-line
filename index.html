@@ -90,6 +90,8 @@
             box-shadow: 0 6px 0 var(--purple-dark);
             transition: transform .08s ease, box-shadow .08s ease;
             margin: 6px;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
         .btn:active {
             transform: translateY(4px);
@@ -124,6 +126,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
         .icon-btn:active {
             transform: translateY(3px);
@@ -137,7 +141,8 @@
             gap: 8px;
             z-index: 5;
         }
-        #gameScreen {
+        #gameScreen,
+        #tutorialScreen {
             padding: 10px;
         }
         .hud {
@@ -186,6 +191,8 @@
             height: auto;
             display: block;
             touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
         .toast {
             position: absolute;
@@ -254,6 +261,7 @@
             max-width: 520px;
             box-shadow: 0 6px 14px rgba(124, 92, 191, 0.12);
             transition: transform .18s ease, background .2s ease;
+            text-align: center;
         }
         .tut-instruction.bump {
             transform: scale(1.05);
@@ -290,8 +298,8 @@
             <div class="card">
                 <h2>How to Play</h2>
                 <ul class="instructions">
-                    <li>🖊️ <b>Drag</b> from dot to dot to draw every line.</li>
-                    <li>➡️ You must finish in <b>one continuous stroke</b> — start and don't lift.</li>
+                    <li>🖊️ <b>Tap & drag</b> from dot to dot to draw every line.</li>
+                    <li>➡️ You must finish in <b>one continuous stroke</b> — but you <b>lift your finger between edges</b> to start the next one.</li>
                     <li>🚫 You <b>cannot retrace</b> a line (overlap costs a life).</li>
                     <li>🔄 Reset button restarts the shape with no penalty.</li>
                     <li>🎁 Clear 3 levels in a row without losing a life to earn a life back (max 3).</li>
@@ -361,7 +369,7 @@
                 <h2>All Shapes Complete!</h2>
                 <p class="subtitle" id="victoryStats">You drew every object without lifting your pen!</p>
                 <div class="btn-row" style="margin-top:14px;">
-                    <button class="btn" id="playAgainBtn">🔁 Play Again</button>
+                    <button class="btn" id="playAgainBtn">🔁 Try Again</button>
                     <button class="btn secondary" id="victoryMenuBtn">🏠 Main Menu</button>
                 </div>
             </div>
@@ -393,10 +401,12 @@
             const bgmScale = [261.63, 293.66, 329.63, 392.00, 440.00, 392.00, 329.63, 293.66];
 
             function ensureAudio() {
-                if (!audioCtx) { audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                if (!audioCtx) {
+                    audioCtx = new(window.AudioContext || window.webkitAudioContext)();
                     masterGain = audioCtx.createGain();
                     masterGain.gain.value = soundOn ? 1 : 0;
-                    masterGain.connect(audioCtx.destination); }
+                    masterGain.connect(audioCtx.destination);
+                }
                 if (audioCtx.state === 'suspended') audioCtx.resume();
             }
 
@@ -442,10 +452,12 @@
             function playSoftHint() { ensureAudio();
                 tone(440, 0.08, 'sine', 0.08); }
 
-            function startBGM() { if (bgmTimer) return;
+            function startBGM() {
+                if (bgmTimer) return;
                 ensureAudio();
                 bgmTimer = setInterval(() => { tone(bgmScale[bgmStep % bgmScale.length], 0.35, 'sine', 0.06);
-                    bgmStep++; }, 480); }
+                    bgmStep++; }, 480);
+            }
 
             function stopBGM() { if (bgmTimer) { clearInterval(bgmTimer);
                     bgmTimer = null; } }
@@ -453,8 +465,10 @@
             function setSound(on) {
                 soundOn = on;
                 if (masterGain) masterGain.gain.value = on ? 1 : 0;
-                document.getElementById('soundToggleGame').textContent = on ? '🔊 Sound: On' : '🔇 Sound: Off';
-                document.getElementById('soundToggleStart').textContent = on ? '🔊' : '🔇';
+                const gameBtn = document.getElementById('soundToggleGame');
+                const startBtn = document.getElementById('soundToggleStart');
+                if (gameBtn) gameBtn.textContent = on ? '🔊 Sound: On' : '🔇 Sound: Off';
+                if (startBtn) startBtn.textContent = on ? '🔊' : '🔇';
             }
 
             // ---------- LEVEL DATA ----------
@@ -627,6 +641,7 @@
                     nodeEls = [];
                 let deadEndTimeout = null,
                     completeFired = false;
+                let lastKnownPt = null;
 
                 function clearBoard() {
                     while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
@@ -635,11 +650,12 @@
                 }
 
                 function svgPoint(cx, cy) {
+                    if (cx == null || cy == null || isNaN(cx) || isNaN(cy)) return null;
                     const pt = svgEl.createSVGPoint();
                     pt.x = cx;
                     pt.y = cy;
                     const ctm = svgEl.getScreenCTM();
-                    if (!ctm) return { x: 0, y: 0 };
+                    if (!ctm) return null;
                     const loc = pt.matrixTransform(ctm.inverse());
                     return { x: loc.x, y: loc.y };
                 }
@@ -665,6 +681,7 @@
                     usedEdges = new Set();
                     path = [];
                     currentNode = null;
+                    lastKnownPt = null;
                     if (deadEndTimeout) { clearTimeout(deadEndTimeout);
                         deadEndTimeout = null; }
                     completeFired = false;
@@ -704,6 +721,7 @@
                         circle.setAttribute('stroke', 'var(--purple)');
                         circle.setAttribute('stroke-width', isCur ? '4' : '3');
                         circle.style.cursor = 'pointer';
+                        circle.style.pointerEvents = 'none';
                         if (isCur) {
                             circle.setAttribute('stroke-dasharray', '4 2');
                             const pulse = document.createElementNS(svgNS, 'animate');
@@ -720,6 +738,7 @@
                 }
 
                 function nearestNode(pt) {
+                    if (!pt) return -1;
                     let best = -1,
                         bestD = Infinity;
                     nodes.forEach((n, i) => {
@@ -730,10 +749,32 @@
                     return bestD <= SNAP_R ? best : -1;
                 }
 
+                function getEventPoint(e) {
+                    let cx = e.clientX,
+                        cy = e.clientY;
+                    if ((cx == null || cy == null || isNaN(cx) || isNaN(cy)) && e.touches && e.touches.length > 0) {
+                        cx = e.touches[0].clientX;
+                        cy = e.touches[0].clientY;
+                    }
+                    if ((cx == null || cy == null || isNaN(cx) || isNaN(cy)) && e.changedTouches && e.changedTouches
+                        .length > 0) {
+                        cx = e.changedTouches[0].clientX;
+                        cy = e.changedTouches[0].clientY;
+                    }
+                    if ((cx == null || cy == null || isNaN(cx) || isNaN(cy)) && e.pageX != null) {
+                        cx = e.pageX;
+                        cy = e.pageY;
+                    }
+                    if (cx == null || cy == null || isNaN(cx) || isNaN(cy)) return null;
+                    return svgPoint(cx, cy);
+                }
+
                 function onDown(e) {
                     if (opts.isBlocked && opts.isBlocked()) return;
                     if (opts.getLevelComplete && opts.getLevelComplete()) return;
-                    const pt = svgPoint(e.clientX, e.clientY);
+                    const pt = getEventPoint(e);
+                    if (!pt) return;
+                    lastKnownPt = pt;
                     const idx = nearestNode(pt);
                     if (idx === -1) return;
                     if (path.length === 0) {
@@ -754,6 +795,7 @@
                 }
 
                 function updateTemp(pt) {
+                    if (!pt || currentNode === null || currentNode >= nodes.length) return;
                     const n = nodes[currentNode];
                     tempLine.setAttribute('x1', n.x);
                     tempLine.setAttribute('y1', n.y);
@@ -761,15 +803,22 @@
                     tempLine.setAttribute('y2', pt.y);
                 }
 
-                function onMove(e) { if (!dragging) return;
-                    const pt = svgPoint(e.clientX, e.clientY);
-                    updateTemp(pt); }
+                function onMove(e) {
+                    if (!dragging) return;
+                    const pt = getEventPoint(e);
+                    if (!pt) return;
+                    lastKnownPt = pt;
+                    updateTemp(pt);
+                }
 
                 function onUp(e) {
                     if (!dragging) return;
                     dragging = false;
                     tempLine.setAttribute('opacity', '0');
-                    const pt = svgPoint(e.clientX, e.clientY);
+                    let pt = getEventPoint(e);
+                    if (!pt) pt = lastKnownPt;
+                    if (!pt) return;
+                    lastKnownPt = pt;
                     const idx = nearestNode(pt);
                     if (idx === -1 || idx === currentNode) return;
                     const link = adjacency[currentNode].find(a => a.to === idx);
@@ -800,32 +849,50 @@
                     }
                 }
 
-                svgEl.addEventListener('pointerdown', onDown);
-                svgEl.addEventListener('pointermove', onMove);
-                window.addEventListener('pointerup', onUp);
-                window.addEventListener('pointercancel', onUp);
-                svgEl.addEventListener('touchstart', function(te) {
-                    if (!te.changedTouches || te.changedTouches.length === 0) return;
-                    te.preventDefault();
-                    const t = te.changedTouches[0];
-                    onDown({ clientX: t.clientX, clientY: t.clientY, pointerId: t.identifier });
-                }, { passive: false });
-                svgEl.addEventListener('touchmove', function(te) {
-                    if (!te.changedTouches || te.changedTouches.length === 0) return;
-                    te.preventDefault();
-                    const t = te.changedTouches[0];
-                    onMove({ clientX: t.clientX, clientY: t.clientY });
-                }, { passive: false });
-                window.addEventListener('touchend', function(te) {
-                    if (!te.changedTouches || te.changedTouches.length === 0) return;
-                    const t = te.changedTouches[0];
-                    onUp({ clientX: t.clientX, clientY: t.clientY });
-                });
-                window.addEventListener('touchcancel', function(te) {
-                    if (!te.changedTouches || te.changedTouches.length === 0) return;
-                    const t = te.changedTouches[0];
-                    onUp({ clientX: t.clientX, clientY: t.clientY });
-                });
+                function handlePointerDown(e) { e.preventDefault();
+                    onDown(e); }
+
+                function handlePointerMove(e) { e.preventDefault();
+                    onMove(e); }
+
+                function handlePointerUp(e) { e.preventDefault();
+                    onUp(e); }
+
+                function handleTouchStart(e) {
+                    e.preventDefault();
+                    if (e.changedTouches && e.changedTouches.length > 0) {
+                        const t = e.changedTouches[0];
+                        onDown({ clientX: t.clientX, clientY: t.clientY, pageX: t.pageX, pageY: t.pageY, pointerId: t
+                                .identifier, touches: e.touches, changedTouches: e.changedTouches });
+                    }
+                }
+
+                function handleTouchMove(e) {
+                    e.preventDefault();
+                    if (e.changedTouches && e.changedTouches.length > 0) {
+                        const t = e.changedTouches[0];
+                        onMove({ clientX: t.clientX, clientY: t.clientY, pageX: t.pageX, pageY: t.pageY, touches: e.touches,
+                            changedTouches: e.changedTouches });
+                    }
+                }
+
+                function handleTouchEnd(e) {
+                    e.preventDefault();
+                    if (e.changedTouches && e.changedTouches.length > 0) {
+                        const t = e.changedTouches[0];
+                        onUp({ clientX: t.clientX, clientY: t.clientY, pageX: t.pageX, pageY: t.pageY, changedTouches: e
+                                .changedTouches });
+                    }
+                }
+
+                svgEl.addEventListener('pointerdown', handlePointerDown);
+                svgEl.addEventListener('pointermove', handlePointerMove);
+                window.addEventListener('pointerup', handlePointerUp);
+                window.addEventListener('pointercancel', handlePointerUp);
+                svgEl.addEventListener('touchstart', handleTouchStart, { passive: false });
+                svgEl.addEventListener('touchmove', handleTouchMove, { passive: false });
+                window.addEventListener('touchend', handleTouchEnd);
+                window.addEventListener('touchcancel', handleTouchEnd);
 
                 return { load, resetProgress, get totalEdges() { return edges.length; } };
             }
@@ -841,7 +908,8 @@
             }
 
             const screens = ['startScreen', 'howToScreen', 'tutorialScreen', 'gameScreen', 'gameOverScreen',
-            'victoryScreen'];
+                'victoryScreen'
+            ];
 
             function showScreen(id) { screens.forEach(s => document.getElementById(s).classList.toggle('active', s ===
                     id)); }
@@ -898,9 +966,11 @@
                     playLevelComplete();
                     state.roundsSinceLoss++;
                     let gained = false;
-                    if (state.roundsSinceLoss >= 3 && state.lives < 3) { state.lives++;
+                    if (state.roundsSinceLoss >= 3 && state.lives < 3) {
+                        state.lives++;
                         state.roundsSinceLoss = 0;
-                        gained = true; }
+                        gained = true;
+                    }
                     showGameToast(gained ? "Level Complete! +1 Life 🎁" : "Level Complete! ✨", 'good');
                     if (gained) setTimeout(playLifeGained, 300);
                     refreshHUD();
